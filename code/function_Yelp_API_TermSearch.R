@@ -14,7 +14,8 @@
 lkp_yelp_by_category <- function(term="", 
                                  category_filter, 
                                  location,
-                                 max.results = 100){
+                                 max.results = 100,
+                                 loc.filter = TRUE){
   
   #get API signature key
   source('../setup_yelp_oauth.R')
@@ -38,7 +39,7 @@ lkp_yelp_by_category <- function(term="",
     if(is.null(yelp$businesses)){
       errors <- bind_rows(errors, data.frame(url = yelpURL))
       cat("Error ", yelpURL, "\n")
-    } else {
+    } else if(yelp$total>0) {
       total = yelp$total
       
       df <- data.frame(
@@ -76,7 +77,9 @@ lkp_yelp_by_category <- function(term="",
       
       end <- nrow(df)<20
       
-      df <- filter(df, sapply(df$city, function(x) grepl(x, location, ignore.case = T)))
+      if(loc.filter){
+          df <- filter(df, sapply(df$city, function(x) grepl(x, location, ignore.case = T)))
+      }
     }
     
     return(list(df=df,end=end, total=total))
