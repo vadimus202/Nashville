@@ -145,23 +145,6 @@ img <- readJPEG('../img/nashville_guitar.jpg')
 grid.raster(img)
 ```
 
-# The Data
-We performed the following steps in our analysis:
-
-* Used the [Yelp Search API](https://www.yelp.com/developers/documentation/v2/search_api) to download rating information for all restaurants in the city of Nashville 
-* Excluded all Fast Food restaurants from the analysis  
-* Aggregated the data across Neighborhoods, Zip Codes, and Categories  
-* Computed average Yelp Ratings weighted by number of reviews  
-* Analysed the frequency of restaurant categories by rating level
-* Created Tables, Charts, and Maps to visualize the results  
-
-The resulting data set contains information on  
-
-* __`r comma(nrow(nash))`__ Restaurants  
-* __`r length(unique(nash$zip))`__ Zip Codes  
-* __`r length(unique(nash$neighborhood))`__ Neighborhoods  
-* __`r nrow(categ)`__ unique Categories  
-
 
 # Yelp Ratings
 Yelp users assign a rating based on a scale of 1 (worst) to 5 (best) Stars. The histogram below shows that the ratings distribution is skewed towards positive with a long negative tail and a median rating around 3.5 to 4 Stars.
@@ -499,7 +482,7 @@ grid.raster(img)
   top_hood('breweries|beer')
 ```
 
-## Top 20 Breweries  
+## Top Breweries  
 ```{r}
   top_restr('breweries|beer')
 ```
@@ -507,3 +490,23 @@ grid.raster(img)
 ```{r}
   top_map('breweries|beer', size_adj = 1.25)
 ```
+
+
+
+# The Data
+We performed the following steps in our analysis:
+
+* Used the [Yelp Search API](https://www.yelp.com/developers/documentation/v2/search_api) to download rating information for all restaurants in the city of Nashville 
+* Excluded all Fast Food restaurants from the analysis  
+* Aggregated the data across Neighborhoods, Zip Codes, and Categories  
+* Computed average Yelp Ratings weighted by number of reviews  
+* Analysed the frequency of restaurant categories by rating level
+* Created Tables, Charts, and Maps to visualize the results  
+
+The resulting data set contains information on  
+
+* __`r comma(nrow(nash))`__ Restaurants  
+* __`r length(unique(nash$zip))`__ Zip Codes  
+* __`r length(unique(nash$neighborhood))`__ Neighborhoods  
+* __`r nrow(categ)`__ unique Categories  
+
