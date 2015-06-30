@@ -1,0 +1,532 @@
+---
+title: "Where to Eat during the AGA 2015 PDT Conference?"
+subtitle: "Data Analysis and Visualization of Yelp Restaurant Ratings in Nashville TN<BR>"
+author: "FI Consulting"
+date: "July 12-15, 2015"
+output: 
+  ioslides_presentation:
+    transition: faster
+    widescreen: yes
+---
+
+<style>
+slide{background-color:white;}
+td{font-size:14px;}
+article{color:black;}
+</style>
+
+
+```{r setup, include=FALSE}
+library(knitr)
+library(leaflet)
+library(ggplot2)
+library(ggthemes)
+library(DT)
+library(scales)
+library(png)
+library(jpeg)
+library(grid)
+library(dplyr)
+
+opts_chunk$set(echo = FALSE, results='asis', size="small", fig.align = 'center')
+theme_set(theme_fivethirtyeight())
+
+# load data
+load('../data/clean/nash_restaurants.RData')
+load('../data/clean/nash_hot_chicken.RData')
+load('../data/clean/nash_music.RData')
+
+# Normalize ratings
+nash <- mutate(nash,
+               yelp_qrt = cut(rating, 
+                              breaks = quantile(rating, seq(0,1,length.out = 5)), 
+                              include.lowest = T,
+                              labels = 1:4))
+
+# list of categories
+categ <-  data.frame(
+  cat = unlist(lapply(nash$categories, strsplit, split = ':')),
+  cat_cd = unlist(lapply(nash$categories_cd, strsplit, split = ':')),
+  stringsAsFactors = F) %>% 
+  unique() %>% 
+  arrange(rank(cat_cd))
+
+# center coord for leaflet maps
+nash.view = list(lat =36.15970,
+                 lng = -86.76060,
+                 zoom = 12)
+# Conference location and Icon
+agaIcon <- icons(
+  iconUrl = "../img/aga.png",
+  iconWidth = 422/5.626667, iconHeight = 233/5.626667)
+
+# functions for best in category
+top_hood <- function(categ.best){
+  datatable(
+    nash %>% 
+      filter(grepl(categ.best, categories_cd)
+             & !is.na(neighborhood)) %>%
+      group_by(neighborhood) %>% 
+      summarize(count = n(),
+                dist = round(weighted.mean(dist, review_count),2),
+                rating = round(weighted.mean(rating, review_count),2),
+                review_count = sum(review_count)) %>% 
+      arrange(-rating*review_count) %>% 
+      filter(row_number()<=5),
+    colnames = c('Neighborhood','Restaurants', 'Distance','Rating', 'Reviews'),
+    class = 'row-border stripe compact order-column hover',
+    options=list(pageLength = 5, dom = 't'),
+    rownames=FALSE)
+}
+
+top_restr <- function(categ.best){
+  datatable(
+    nash %>% 
+      filter(grepl(categ.best,categories_cd)) %>% 
+      top_n(20,rating*review_count) %>% 
+      arrange(-rating*review_count) %>%
+      mutate(Rank = row_number()) %>% 
+      select(Rank, name, neighborhood, categories ,rating, review_count,dist),
+    colnames = c('Rank','Name','Neighborhood', 'Category', 'Rating', 'Reviews','Distance'),
+    class = 'row-border stripe compact order-column hover',
+    options=list(pageLength = 10, dom = 'tip'),
+    rownames=FALSE)
+}
+
+top_map <- function(categ.best, size_adj=1){
+  
+  df <- nash %>% 
+    filter(grepl(categ.best, categories_cd)) %>%
+    top_n(20,rating*review_count) %>% 
+    arrange(-rating*review_count) %>%
+    mutate(Rank = row_number(),
+           popup = paste0(
+             name, 
+             '<BR>Rank: ', Rank, 
+             '<BR>Neighborhood: ', neighborhood, 
+             '<BR>Categories: ', categories, 
+             '<BR>Rating: ', rating, 
+             '<BR>Reviews: ', review_count, 
+             '<BR>Distance: ', dist
+           )) %>% 
+    select(popup, lat, lng, review_count, Rank)
+  
+  # Create  color palette
+  pal <- colorNumeric(
+    palette = c('forestgreen', 'yellow', 'tomato'),
+    domain = df$Rank
+  )
+  
+  leaflet(data = df, 
+          width = 900, height = 450) %>% 
+    addProviderTiles("CartoDB.Positron") %>%
+    setView(lng = nash.view$lng, lat = nash.view$lat, zoom = nash.view$zoom) %>% 
+    # addMarkers(popup = ~popup, lng = ~lng, lat = ~lat) %>% 
+    addCircleMarkers(
+      popup = ~popup,
+      lng = ~lng, lat = ~lat,
+      radius = ~sqrt(review_count)*size_adj,
+      color = ~pal(Rank),
+      stroke = FALSE, fillOpacity = 0.80) %>%     
+    addMarkers(lng = -86.69255, lat = 36.21149, 
+               icon = agaIcon,
+               popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
+}
+
+
+```
+
+
+
+## Introduction
+
+```{r nash_img, fig.width=0.50*727/72, fig.height=0.50*257/72}
+img <- readJPEG('../img/nashville_guitar.jpg')
+grid.raster(img)
+```
+
+Although best known for its music, Nashville is a city filled with many dining destinations. Some of the more popular types of local cuisine include hot chicken, hot fish, barbecue, and meat and three. Thanks, in part, to Nashville's foodie culture, the city was ranked as the 13th "snobbiest" city in America according to Travel + Leisure magazine.
+
+Below is a quick-and-dirty analysis of restaurant's Yelp ratings in Nashville, TN area. It is intended to inform AGA conference attendees of the best dining options this city has to offer.
+
+```{r logo, fig.width=2, fig.height=1.5}
+img <- readPNG('../img/aga.png')
+grid.raster(img)
+```
+
+
+# Yelp Ratings
+
+----
+
+Yelp users assign a rating based on a scale of 1 (worst) to 5 (best) Stars. The histogram below shows that the ratings distribution is skewed towards positive with a long negative tail and a median rating around 3.5 to 4 Stars.
+
+```{r yelp_dist, fig.width=6, fig.height=3.5}
+ggplot(nash, aes(x=rating)) + 
+  ggtitle('Number of restaurants by Yelp Rating') +
+  geom_histogram(binwidth = 0.50, fill='firebrick', color='white') +
+  scale_x_continuous(limits=c(1, 5)) +
+  scale_y_continuous(labels = comma)
+
+kable(t(summary(nash$rating)))
+
+```
+
+
+
+## Yelp Ratings Maps  
+
+The map on the next slide allows to zoom-in on individual ZIP codes to find out where the best-rated restaurants are concentrated.  
+
+* The circle __size__ represents the number of restaurants within each Zip code.  
+* The circle __color__ represents the the weighted average Yelp rating of all restaurants in each Zip code. The color scale is based on 5 quitiles of all ratings in the dataset, from red being the lowest quintile, to yellow in the middle, to green for the highest-rated Zip codes nationwide.  
+* __Click__ on individual circles to see the underlying data for each Zip Code
+
+----
+
+__Yelp Ratings by Zip Code__
+```{r zip_map}
+
+df = nash.zip %>%
+  filter(!is.na(zip)) %>%
+  arrange(-rating) %>% 
+  mutate(rank = rank(-rating),
+         popup = paste0(
+           'Zip Code: ', zip,
+           '<BR>Rank: ', rank, ' of ', n(),
+           '<BR>Restaurants: ', count,
+           '<BR>Avg Rating: ', round(rating,2),
+           '<BR>Reviews: ', comma(review_count)))  
+
+# Create  ratings quantile-based discrete palette function
+pal <- colorQuantile(
+  palette = c('tomato', 'yellow', 'forestgreen'),
+  domain = df$rating,
+  n=5
+)
+
+leaflet(data = df, width = 900, height = 450) %>% 
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(lng = nash.view$lng, lat = nash.view$lat, zoom = nash.view$zoom) %>% 
+  addCircleMarkers(
+    popup = ~popup,
+    lng = ~long, lat = ~lat,
+    radius = ~sqrt(count)*2,
+    color = ~pal(rating),
+    stroke = FALSE, fillOpacity = 0.90) %>% 
+  addMarkers(lng = -86.69255, lat = 36.21149, 
+             icon = agaIcon,
+             popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
+
+
+```
+
+
+
+##  Nashville's Top-Rated Neighborhoods  
+```{r top_hoods}
+
+datatable(
+  nash %>% 
+    filter(!is.na(neighborhood)) %>% 
+    group_by(neighborhood) %>% 
+    summarize(count = n(),
+              dist = round(weighted.mean(dist, review_count),2),
+              rating = round(weighted.mean(rating, review_count),2),
+              review_count = sum(review_count)) %>%   
+    top_n(5,rating*review_count) %>% 
+    arrange(-rating*review_count) %>%
+    mutate(Rank = row_number()) %>% 
+    select(Rank, neighborhood ,rating, review_count,dist),
+  colnames = c('Rank','Neighborhood', 'Rating', 'Reviews','Distance'),
+  class = 'row-border stripe compact order-column hover',
+  options=list(pageLength = 20, dom = 't'),
+  rownames=FALSE
+)
+```
+
+## Nashville Restaurants Wordcloud   
+
+The following Wordcloud represents the frequency counts of restaurant categories in the city of Nashville. The cloud is split into four quartiles by level of Yelp Rating. It shows which types of restaurants tend to be highly rated by Yelp users and vice-versa.  
+
+----
+
+__Restaurant Categories__  
+```{r cloud, fig.width=6, fig.height=6}
+img <- readPNG('../img/wordcloud.png')
+grid.raster(img)
+```
+
+
+## Nashville Hot Chicken
+
+Nashville hot chicken is a type of fried chicken that is a local specialty of Nashville, Tennessee, in the United States. In its typical preparation, it is a portion of breast, thigh, or wing that has been marinated in a water-based blend of seasoning, floured, fried, and finally sauced using a paste that has been spiced with cayenne pepper. It is served atop slices of white bread with pickle chips.
+
+There are many restaurants in Nashville that serve a variant of the dish, and there is a city-wide festival and competition commemorating it. The popularity of hot chicken has spread beyond the Southern United States due to the influence of Nashville's music industry.
+
+Don't leave Nashville without sampling this unique dish form one of the restarants highlighted below.
+
+```{r chic_img, fig.width=0.50*500/72, fig.height=0.50*323/72}
+img <- readJPEG('../img/nashville_hot_chicken.jpg')
+grid.raster(img)
+```
+
+## Top 20 Restarants Serving Nashville Hot Chicken  
+
+We calculated restaurants rankings based on a combination of Yelp ratings,  number of reviews and frequency of 'hot chicken' mentions in user reviews.
+```{r}
+
+datatable(
+    hot.chic %>% 
+      top_n(20,-rank) %>% 
+      arrange(rank) %>%
+      select(rank, name ,rating, review_count,dist, snippet_text),
+    colnames = c('Rank','Name', 'Rating', 'Reviews','Distance','Reviews Snippet'),
+    class = 'row-border stripe compact order-column hover',
+    options=list(pageLength = 5, dom = 'tip'),
+    rownames=FALSE)
+
+
+```
+
+## Best of Hot Chicken on the Map
+
+- The __color__ of the circles represents the rank of the restaurants from 1 (Green) to 20 (Red).  
+- The __size__ of the circles indicates the frequency of 'hot chicken' mentions in Yelp reviews.  
+
+```{r hot_chic_map}
+
+df = hot.chic %>%
+            top_n(20, -rank) %>% 
+            mutate(popup = paste0(
+                     name, 
+                     '<BR>Rank: ', rank, 
+                     '<BR>Categories: ', categories, 
+                     '<BR>Rating: ', rating, 
+                     '<BR>Reviews: ', comma(review_count))) %>% 
+            select(popup, lat, lng, rating, matches, rank)
+
+# Create  color palette
+pal <- colorNumeric(
+  palette = c('forestgreen', 'yellow', 'tomato'),
+  domain = df$rank
+)
+
+leaflet(data = df, width = 900, height = 450) %>% 
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(lng = nash.view$lng, lat = nash.view$lat+0.01, zoom = nash.view$zoom) %>% 
+  addCircleMarkers(
+    popup = ~popup,
+    lng = ~lng, lat = ~lat,
+    radius = ~sqrt(matches)*2.5,
+    color = ~pal(rank),
+    stroke = FALSE, fillOpacity = 0.90) %>% 
+  addMarkers(lng = -86.69255, lat = 36.21149, 
+             icon = agaIcon,
+             popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
+
+
+
+
+```
+
+
+## Explore Nashville's Music Scene
+
+Nashville has a vibrant music and entertainment scene spanning a variety of genres. As the city's name itself is a metonym for the country music industry, many popular tourist sites involve country music. Numerous music clubs and honky-tonk bars can be found in downtown Nashville, especially the area encompassing Lower Broadway, Second Avenue, and Printer's Alley, which is often referred to as "the District".
+
+```{r music_img, fig.width=0.50*1140/72, fig.height=0.50*260/72}
+img <- readJPEG('../img/Nashville_Broadway.jpg')
+grid.raster(img)
+```
+
+**Top Neighborhoods** 
+```{r top_music_hoods}
+
+  datatable(
+    nash.music %>% 
+      filter(!is.na(neighborhood)) %>%
+      group_by(neighborhood) %>% 
+      summarize(count = n(),
+                dist = round(weighted.mean(dist, review_count),2),
+                rating = round(weighted.mean(rating, review_count),2),
+                review_count = sum(review_count)) %>% 
+      arrange(-rating*review_count) %>% 
+      filter(row_number()<=5),
+    colnames = c('Neighborhood','Venues', 'Distance','Rating', 'Reviews'),
+    class = 'row-border stripe compact order-column hover',
+    options=list(pageLength = 5, dom = 't'),
+    rownames=FALSE)
+
+
+```
+
+## Top 20 Music Venues
+```{r top_music_venues}
+
+datatable(
+  nash.music %>% 
+    filter(!grepl('cinema',categories_cd)) %>% 
+    top_n(20,rating*review_count) %>% 
+    arrange(-rating*review_count) %>%
+    mutate(categories = gsub('Music Venues:','', categories),
+           categories = gsub(':',', ', categories),
+           Rank = row_number()) %>% 
+    select(Rank, name, categories ,rating, review_count,dist,snippet_text),
+  colnames = c('Rank','Name', 'Category', 'Rating', 'Reviews','Distance','Review Snippet'),
+  class = 'row-border stripe compact order-column hover',
+  options=list(pageLength = 5, dom = 'tip'),
+  rownames=FALSE)
+
+
+
+```
+
+
+## Best Nashville Music Venues on the Map
+
+- The __color__ of the circles represents the venue's rank from 1 (Green) to 20 (Red).  
+- The __size__ of the circles indicates the number of Yelp reviews.  
+
+```{r music_map}
+
+df = nash.music %>%
+  filter(!grepl('cinema',categories_cd)) %>% 
+  top_n(20, -rank) %>% 
+  mutate(rank = row_number(),
+         categories = gsub('Music Venues:','', categories),
+           categories = gsub(':',', ', categories),
+         popup = paste0(
+           name, 
+           '<BR>Rank: ', rank, 
+           '<BR>Categories: ', categories, 
+           '<BR>Neighborhood: ', neighborhood, 
+           '<BR>Rating: ', rating, 
+           '<BR>Reviews: ', comma(review_count))) %>% 
+  select(popup, lat, lng, rating, review_count, rank)
+
+# Create  color palette
+pal <- colorNumeric(
+  palette = c('forestgreen', 'yellow', 'tomato'),
+  domain = df$rank
+)
+
+leaflet(data = df, width = 900, height = 450) %>% 
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(lng = nash.view$lng, lat = nash.view$lat+0.01, zoom = nash.view$zoom) %>% 
+  addCircleMarkers(
+    popup = ~popup,
+    lng = ~lng, lat = ~lat,
+    radius = ~sqrt(review_count)*0.75,
+    color = ~pal(rank),
+    stroke = FALSE, fillOpacity = 0.90) %>% 
+  addMarkers(lng = -86.69255, lat = 36.21149, 
+             icon = agaIcon,
+             popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
+
+
+
+
+```
+
+
+
+
+
+
+
+## Where to Eat Southern Food
+
+**Top Neighborhoods**  
+```{r}
+  top_hood('southern')
+```
+
+## Top 20 Southern Restaurants  
+```{r}
+  top_restr('southern')
+```
+
+```{r}
+  top_map('southern', size_adj = 0.5)
+```
+
+
+## Where to Find the Best Bar-B-Que
+
+```{r bbq_img, fig.width=0.75*460/72, fig.height=0.75*276/72}
+img <- readJPEG('../img/nashville_bbq.jpg')
+grid.raster(img)
+```
+
+**Top Neighborhoods**  
+```{r}
+  top_hood('bbq')
+```
+
+## Top 20 Barbeque Restaurants  
+```{r}
+  top_restr('bbq')
+```
+
+```{r}
+  top_map('bbq', size_adj = .65)
+```
+
+
+
+## Where to Eat Steak
+
+**Top Neighborhoods**  
+```{r}
+  top_hood('steak')
+```
+
+## Top 20 Steakhouses  
+```{r}
+  top_restr('steak')
+```
+
+## Top 20 Steakhouses 
+```{r}
+  top_map('steak',size_adj = 0.80)
+```
+
+
+
+## Where to Drink Beer
+
+**Top Neighborhoods**  
+```{r}
+  top_hood('breweries|beer')
+```
+
+## Top Breweries  
+```{r}
+  top_restr('breweries|beer')
+```
+
+## Top Breweries 
+```{r}
+  top_map('breweries|beer', size_adj = 1.25)
+```
+
+
+
+## The Data
+We performed the following steps in our analysis:
+
+* Used the [Yelp Search API](https://www.yelp.com/developers/documentation/v2/search_api) to download rating information for all restaurants in the city of Nashville 
+* Excluded all Fast Food restaurants from the analysis  
+* Aggregated the data across Neighborhoods, Zip Codes, and Categories  
+* Computed average Yelp Ratings weighted by number of reviews  
+* Analysed the frequency of restaurant categories by rating level
+* Created Tables, Charts, and Maps to visualize the results  
+
+The resulting data set contains information on  
+
+* __`r comma(nrow(nash))`__ Restaurants  
+* __`r length(unique(nash$zip))`__ Zip Codes  
+* __`r length(unique(nash$neighborhood))`__ Neighborhoods  
+* __`r nrow(categ)`__ unique Categories  
+
