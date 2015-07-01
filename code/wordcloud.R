@@ -52,7 +52,10 @@ colnames(m) <- c('Worst 25%','25-50%','50-75%','Best 25%')
 rownames(m) <- categ$cat
 
 # print wordcloud:
-png('img/wordcloud.png',width = 900, height = 900, res = 72*3)
+png('img/wordcloud.png',
+    width = 900, height = 800, 
+    res = 72*3, pointsize = 12, 
+    bg = 'white')
 set.seed(999)
 comparison.cloud(m, scale=c(2, 0.5), title.size=1,
                  random.order=FALSE, rot.per=0,  
