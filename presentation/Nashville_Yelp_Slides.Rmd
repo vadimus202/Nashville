@@ -1,18 +1,26 @@
 ---
 title: "Where to Eat during the AGA 2015 PDT Conference?"
-subtitle: "Data Analysis and Visualization of Yelp Restaurant Ratings in Nashville TN<BR>"
+subtitle: "Data Analysis and Visualization of Yelp Ratings in Nashville, TN"
 author: "FI Consulting"
 date: "July 12-15, 2015"
 output: 
   ioslides_presentation:
+    logo: ../img/logo_slides.png
     transition: faster
-    widescreen: yes
+    widescreen: no
 ---
 
 <style>
 slide{background-color:white;}
 td{font-size:14px;}
 article{color:black;}
+
+.title-slide hgroup h1{font-size:45px;color:#1142F5;}
+.title-slide hgroup h2{font-size:28px;color:#C5A619;}
+table{margin:auto;}
+
+.smaller_font p,li{font-size:18px;}
+
 </style>
 
 
@@ -89,7 +97,7 @@ top_restr <- function(categ.best){
       select(Rank, name, neighborhood, categories ,rating, review_count,dist),
     colnames = c('Rank','Name','Neighborhood', 'Category', 'Rating', 'Reviews','Distance'),
     class = 'row-border stripe compact order-column hover',
-    options=list(pageLength = 10, dom = 'tip'),
+    options=list(pageLength = 5, dom = 'tip'),
     rownames=FALSE)
 }
 
@@ -118,7 +126,7 @@ top_map <- function(categ.best, size_adj=1){
   )
   
   leaflet(data = df, 
-          width = 900, height = 450) %>% 
+          width = 800, height = 450) %>% 
     addProviderTiles("CartoDB.Positron") %>%
     setView(lng = nash.view$lng, lat = nash.view$lat, zoom = nash.view$zoom) %>% 
     # addMarkers(popup = ~popup, lng = ~lng, lat = ~lat) %>% 
@@ -138,7 +146,7 @@ top_map <- function(categ.best, size_adj=1){
 
 
 
-## Introduction
+## Introduction {.smaller_font}
 
 ```{r nash_img, fig.width=0.50*727/72, fig.height=0.50*257/72}
 img <- readJPEG('../img/nashville_guitar.jpg')
@@ -155,10 +163,7 @@ grid.raster(img)
 ```
 
 
-# Yelp Ratings
-
-----
-
+## Yelp Ratings  {.smaller_font}
 Yelp users assign a rating based on a scale of 1 (worst) to 5 (best) Stars. The histogram below shows that the ratings distribution is skewed towards positive with a long negative tail and a median rating around 3.5 to 4 Stars.
 
 ```{r yelp_dist, fig.width=6, fig.height=3.5}
@@ -168,10 +173,9 @@ ggplot(nash, aes(x=rating)) +
   scale_x_continuous(limits=c(1, 5)) +
   scale_y_continuous(labels = comma)
 
-kable(t(summary(nash$rating)))
+kable(t(summary(nash$rating)),format = 'html', align='c')
 
 ```
-
 
 
 ## Yelp Ratings Maps  
@@ -205,7 +209,7 @@ pal <- colorQuantile(
   n=5
 )
 
-leaflet(data = df, width = 900, height = 450) %>% 
+leaflet(data = df, width = 800, height = 450) %>% 
   addProviderTiles("CartoDB.Positron") %>%
   setView(lng = nash.view$lng, lat = nash.view$lat, zoom = nash.view$zoom) %>% 
   addCircleMarkers(
@@ -258,20 +262,22 @@ grid.raster(img)
 ```
 
 
-## Nashville Hot Chicken
+## Nashville Hot Chicken {.smaller_font}
 
 Nashville hot chicken is a type of fried chicken that is a local specialty of Nashville, Tennessee, in the United States. In its typical preparation, it is a portion of breast, thigh, or wing that has been marinated in a water-based blend of seasoning, floured, fried, and finally sauced using a paste that has been spiced with cayenne pepper. It is served atop slices of white bread with pickle chips.
 
 There are many restaurants in Nashville that serve a variant of the dish, and there is a city-wide festival and competition commemorating it. The popularity of hot chicken has spread beyond the Southern United States due to the influence of Nashville's music industry.
 
-Don't leave Nashville without sampling this unique dish form one of the restarants highlighted below.
+Don't leave Nashville without sampling this unique dish form one of the restaurants highlighted below.
 
 ```{r chic_img, fig.width=0.50*500/72, fig.height=0.50*323/72}
 img <- readJPEG('../img/nashville_hot_chicken.jpg')
 grid.raster(img)
 ```
 
-## Top 20 Restarants Serving Nashville Hot Chicken  
+----
+
+**Top 20 Restarants Serving Nashville Hot Chicken**  
 
 We calculated restaurants rankings based on a combination of Yelp ratings,  number of reviews and frequency of 'hot chicken' mentions in user reviews.
 ```{r}
@@ -289,7 +295,9 @@ datatable(
 
 ```
 
-## Best of Hot Chicken on the Map
+##{.smaller_font}
+
+**Best of Hot Chicken on the Map**
 
 - The __color__ of the circles represents the rank of the restaurants from 1 (Green) to 20 (Red).  
 - The __size__ of the circles indicates the frequency of 'hot chicken' mentions in Yelp reviews.  
@@ -312,7 +320,7 @@ pal <- colorNumeric(
   domain = df$rank
 )
 
-leaflet(data = df, width = 900, height = 450) %>% 
+leaflet(data = df, width = 800, height = 450) %>% 
   addProviderTiles("CartoDB.Positron") %>%
   setView(lng = nash.view$lng, lat = nash.view$lat+0.01, zoom = nash.view$zoom) %>% 
   addCircleMarkers(
@@ -331,7 +339,7 @@ leaflet(data = df, width = 900, height = 450) %>%
 ```
 
 
-## Explore Nashville's Music Scene
+## Explore Nashville's Music Scene {.smaller_font}
 
 Nashville has a vibrant music and entertainment scene spanning a variety of genres. As the city's name itself is a metonym for the country music industry, many popular tourist sites involve country music. Numerous music clubs and honky-tonk bars can be found in downtown Nashville, especially the area encompassing Lower Broadway, Second Avenue, and Printer's Alley, which is often referred to as "the District".
 
@@ -383,7 +391,8 @@ datatable(
 ```
 
 
-## Best Nashville Music Venues on the Map
+## {.smaller_font}
+**Best Nashville Music Venues on the Map**
 
 - The __color__ of the circles represents the venue's rank from 1 (Green) to 20 (Red).  
 - The __size__ of the circles indicates the number of Yelp reviews.  
@@ -411,7 +420,7 @@ pal <- colorNumeric(
   domain = df$rank
 )
 
-leaflet(data = df, width = 900, height = 450) %>% 
+leaflet(data = df, width = 800, height = 450) %>% 
   addProviderTiles("CartoDB.Positron") %>%
   setView(lng = nash.view$lng, lat = nash.view$lat+0.01, zoom = nash.view$zoom) %>% 
   addCircleMarkers(
@@ -447,6 +456,7 @@ leaflet(data = df, width = 900, height = 450) %>%
   top_restr('southern')
 ```
 
+## Top 20 Southern Restaurants  
 ```{r}
   top_map('southern', size_adj = 0.5)
 ```
@@ -454,7 +464,7 @@ leaflet(data = df, width = 900, height = 450) %>%
 
 ## Where to Find the Best Bar-B-Que
 
-```{r bbq_img, fig.width=0.75*460/72, fig.height=0.75*276/72}
+```{r bbq_img, fig.width=0.70*460/72, fig.height=0.70*276/72}
 img <- readJPEG('../img/nashville_bbq.jpg')
 grid.raster(img)
 ```
@@ -469,6 +479,7 @@ grid.raster(img)
   top_restr('bbq')
 ```
 
+## Top 20 Barbeque Restaurants  
 ```{r}
   top_map('bbq', size_adj = .65)
 ```
@@ -513,7 +524,7 @@ grid.raster(img)
 
 
 
-## The Data
+## The Data {.smaller_font}
 We performed the following steps in our analysis:
 
 * Used the [Yelp Search API](https://www.yelp.com/developers/documentation/v2/search_api) to download rating information for all restaurants in the city of Nashville 

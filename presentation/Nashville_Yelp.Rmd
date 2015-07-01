@@ -246,7 +246,7 @@ Nashville hot chicken is a type of fried chicken that is a local specialty of Na
 
 There are many restaurants in Nashville that serve a variant of the dish, and there is a city-wide festival and competition commemorating it. The popularity of hot chicken has spread beyond the Southern United States due to the influence of Nashville's music industry.
 
-Don't leave Nashville without sampling this unique dish form one of the restarants highlighted below.
+Don't leave Nashville without sampling this unique dish form one of the restaurants highlighted below.
 
 ```{r chic_img, fig.width=0.50*500/72, fig.height=0.50*323/72}
 img <- readJPEG('../img/nashville_hot_chicken.jpg')
