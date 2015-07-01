@@ -55,7 +55,7 @@ rownames(m) <- categ$cat
 png('img/wordcloud.png',
     width = 900, height = 800, 
     res = 72*3, pointsize = 12, 
-    bg = 'white')
+    bg = 'transparent')
 set.seed(999)
 comparison.cloud(m, scale=c(2, 0.5), title.size=1,
                  random.order=FALSE, rot.per=0,  
