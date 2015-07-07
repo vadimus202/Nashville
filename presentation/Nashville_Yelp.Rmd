@@ -136,9 +136,9 @@ grid.raster(img)
 
 
 # Introduction
-Although best known for its music, Nashville is a city filled with many dining destinations. Some of the more popular types of local cuisine include hot chicken, hot fish, barbecue, and meat and three. Thanks, in part, to Nashville's foodie culture, the city was ranked as the 13th "snobbiest" city in America according to Travel + Leisure magazine.
+Although best known for its music, Nashville is a city filled with many dining destinations. Some of the more popular types of local cuisine include the [Hot Chicken](http://www.bonappetit.com/recipe/nashville-style-hot-chicken), Hot Fish, Barbecue, and the ["Meat and Three"](http://entree.com/the-meat-and-three). Thanks, in part, to Nashville's foodie culture, the city was ranked as the 13th "snobbiest" city in America according to Travel + Leisure magazine.
 
-Below is a quick-and-dirty analysis of restaurant's Yelp ratings in Nashville, TN area. It is intended to inform AGA conference attendees of the best dining options this city has to offer.
+Below is a quick-and-dirty analysis of restaurants' Yelp ratings in the Nashville, TN area. It is intended to inform AGA conference attendees of the best dining options this city has to offer.
 
 ```{r nash_img, fig.width=0.50*727/72, fig.height=0.50*257/72}
 img <- readJPEG('../img/nashville_guitar.jpg')
