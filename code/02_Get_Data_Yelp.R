@@ -23,9 +23,9 @@ stopifnot(!is.null(yelp.sig))
 
 # prep Yelp search terms
 terms <- zips %>%
-  filter(city=='Nashville') %>% 
-  select(zip, area) %>%
-  unique()               #%>% sample_n(5,replace = F,)
+    filter(city=='Nashville') %>% 
+    select(zip, area) %>%
+    unique()               #%>% sample_n(5,replace = F,)
 
 # Call Yelp API
 source('code/function_Yelp_API.R')
@@ -34,53 +34,74 @@ nash.yelp$elapse
 nash.yelp$err
 
 
+# Bayesian estimate
+# weighted rating (WR) = (v ÷ (v+m)) × R + (m ÷ (v+m)) × C
+# R = average for the movie (mean) = (Rating)
+# v = number of votes for the item = (votes)
+# m = minimum votes required to be listed in the Top List
+# C = the mean vote across the whole report
+
+
+
 # Prep Final Output datasets
 
 # restaurant-level data
 nash <- nash.yelp$results %>%
-  # remove fast food, food trucks, non-food
-  filter(!grepl('foodtrucks|foodstands|streetvendors|hotdogs|cloth|laundry|accessories|antiques|
+    # remove fast food, food trucks, non-food
+    filter(!grepl('foodtrucks|foodstands|streetvendors|hotdogs|cloth|laundry|accessories|antiques|
                       aquariums|arcades|artsandcrafts|bookstores|
                 homedecor|movietheaters',categories_cd)) %>% 
-  rename(zip = postal_code) %>% 
-  mutate(dist =  distCosine(geo.loc, cbind(lat, lng), r = 6378137*0.000621371192),
-         dist = round(dist,2))
+    rename(zip = postal_code) %>% 
+    mutate(dist =  distCosine(geo.loc, cbind(lat, lng), r = 6378137*0.000621371192),
+           dist = round(dist,2))
 
 # aggregate by Zip code
 nash.zip <- nash %>%
-  group_by(zip) %>%
-  summarize(count = n(),
-            rating = weighted.mean(rating, review_count,na.rm = T),
-            review_count = sum(review_count,na.rm = T)) %>%
-  ungroup() %>%
-  inner_join(zips, by ='zip') %>%
-  mutate(count_per_person = as.integer(count/pop*100000),
-         review_per_person = as.integer(review_count/pop*100000),
-         count_per_sqmi = round(count/area*100,3),
-         dist =  distCosine(geo.loc, cbind(lat, long), 
-                            r = 6378137*0.000621371192),
-         dist = round(dist,2)) %>%
-  select(zip, city, count, count_per_person, 
-         count_per_sqmi, rating, review_count, review_per_person,
-         pop, inc, lat, long, area, dens, dist) %>%
-  arrange(-count)
+    group_by(zip) %>%
+    summarize(count = n(),
+              rating = weighted.mean(rating, review_count,na.rm = T),
+              review_count = sum(review_count,na.rm = T)) %>%
+    ungroup() %>%
+    inner_join(zips, by ='zip') %>%
+    mutate(count_per_person = as.integer(count/pop*100000),
+           review_per_person = as.integer(review_count/pop*100000),
+           count_per_sqmi = round(count/area*100,3),
+           dist =  distCosine(geo.loc, cbind(lat, long), 
+                              r = 6378137*0.000621371192),
+           dist = round(dist,2)) %>%
+    select(zip, city, count, count_per_person, 
+           count_per_sqmi, rating, review_count, review_per_person,
+           pop, inc, lat, long, area, dens, dist) %>%
+    arrange(-count)
 
 # aggregate by neighborhood
+min_votes <- 500
+
 nash.hood <- nash %>%
-  group_by(neighborhood) %>%
-  summarize(
-    count = n(),
-    rating = weighted.mean(rating, review_count),
-    review_count = sum(review_count),
-    lat = mean(lat, na.rm=T),
-    long = mean(lng, na.rm=T),
-    dist =  distCosine(geo.loc, cbind(lat, long), r = 6378137*0.000621371192),
-    dist = round(dist,2)) %>%
-  ungroup() %>%
-  select(neighborhood, count, rating, review_count, lat, long, dist) %>%
-  arrange(-rating)
+    filter(!is.na(neighborhood)) %>% 
+    group_by(neighborhood) %>%
+    summarize(
+        count = n(),
+        rating = weighted.mean(rating, review_count),
+        review_count = sum(review_count)) %>%
+    ungroup() %>% 
+    mutate(R = rating,
+           v = review_count,
+           m = min_votes,
+           C = mean(rating),
+           WR = (v / (v+m)) * R + (m / (v+m)) * C) %>% 
+    filter(v>=m & !is.na(neighborhood)) %>%   
+    arrange(-WR) %>%
+    mutate(Rank = row_number(),
+           rating = round(rating, 2),
+           WR = round(WR, 2)) %>% 
+    select(-R,-v,-m, -C)
 
+hood.loc <- ggmap::geocode(
+    location = paste(nash.hood$neighborhood, 
+                     "Nashville, TN", sep = ', '))
 
+nash.hood <- cbind(nash.hood, hood.loc)
 
 # save
 save(nash.yelp, 

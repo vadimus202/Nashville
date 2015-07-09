@@ -22,7 +22,7 @@ df <- nash.hood %>%
     filter(!is.na(neighborhood)) %>% 
     mutate(lat1 = as.numeric(aga.loc$lat),
            lon1 = as.numeric(aga.loc$lon)) %>% 
-    select(id = neighborhood, lat1, lon1, lat2=lat, lon2=long)
+    select(id = neighborhood, lat1, lon1, lat2=lat, lon2=lon)
 
 nash.hood.uber <- get_uber_estimates(df = df, uber_token = uber_token)
 

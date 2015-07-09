@@ -26,6 +26,7 @@ theme_set(theme_fivethirtyeight())
 
 # load data
 load('../data/clean/nash_restaurants.RData')
+load('../data/clean/nash_uber.RData')
 load('../data/clean/nash_hot_chicken.RData')
 load('../data/clean/nash_music.RData')
 
@@ -162,46 +163,52 @@ kable(t(summary(nash$rating)))
 
 
 
-# Yelp Ratings by Zip Code  
-The map below allows to zoom-in on individual ZIP codes to find out where the best-rated restaurants are concentrated.  
+# Yelp Ratings by Neighborhood  
+The map below allows to zoom-in on individual Neighborhoods to find out where the best-rated restaurants are concentrated.  
 
-* The circle __size__ represents the number of restaurants within each Zip code.  
-* The circle __color__ represents the the weighted average Yelp rating of all restaurants in each Zip code. The color scale is based on 5 quitiles of all ratings in the dataset, from red being the lowest quintile, to yellow in the middle, to green for the highest-rated Zip codes nationwide.  
-* __Click__ on individual circles to see the underlying data for each Zip Code
+* The circle __size__ represents the number of restaurants within each Neighborhood.  
+* The circle __color__ represents the the weighted average Yelp rating of all restaurants in each Neighborhood. The color scale is based on 5 quitiles of all ratings in the dataset, from red being the lowest quintile, to yellow in the middle, to green for the highest-rated Neighborhood in Nashville.  
+* __Click__ on individual circles to see the underlying data for each Neighborhood
 
-```{r zip_map}
+```{r hood_map}
 
-df = nash.zip %>%
-  filter(!is.na(zip)) %>%
-  arrange(-rating) %>% 
-  mutate(rank = rank(-rating),
-         popup = paste0(
-           'Zip Code: ', zip,
-           '<BR>Rank: ', rank, ' of ', n(),
-           '<BR>Restaurants: ', count,
-           '<BR>Avg Rating: ', round(rating,2),
-           '<BR>Reviews: ', comma(review_count)))  
+
+df <- nash.hood %>% 
+    left_join(
+        nash.hood.uber %>% 
+            select(id, distance, uberX, uberXL),
+        by = c('neighborhood'='id')
+    ) %>% 
+    mutate(popup = paste0(
+                   neighborhood,
+                   '<BR>Rank: ', Rank, ' of ', n(),
+                   '<BR>Restaurants: ', count,
+                   '<BR>Avg Rating: ', rating,
+                   '<BR>Reviews: ', comma(review_count),
+                   '<BR>Distance: ', distance,
+                   '<BR>UberX: ', uberX))
 
 # Create  ratings quantile-based discrete palette function
 pal <- colorQuantile(
   palette = c('tomato', 'yellow', 'forestgreen'),
-  domain = df$rating,
+  domain = df$WR,
   n=5
 )
 
-leaflet(data = df, width = 900, height = 450) %>% 
-  addProviderTiles("CartoDB.Positron") %>%
-  setView(lng = nash.view$lng, lat = nash.view$lat, zoom = nash.view$zoom) %>% 
-  addCircleMarkers(
-    popup = ~popup,
-    lng = ~long, lat = ~lat,
-    radius = ~sqrt(count)*2,
-    color = ~pal(rating),
-    stroke = FALSE, fillOpacity = 0.90) %>% 
-  addMarkers(lng = -86.69255, lat = 36.21149, 
-             icon = agaIcon,
-             popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
-
+leaflet(
+    data = df, 
+    width = 900, height = 450) %>% 
+    addProviderTiles("CartoDB.Positron") %>%
+    setView(lng = nash.view$lng, lat = nash.view$lat, zoom = nash.view$zoom) %>% 
+    addCircleMarkers(
+        popup = ~popup,
+        lng = ~lon, lat = ~lat,
+        radius = ~sqrt(count)*2,
+        color = ~pal(WR),
+        stroke = FALSE, fillOpacity = 0.90) %>% 
+    addMarkers(lng = -86.69255, lat = 36.21149, 
+               icon = agaIcon,
+               popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
 
 
 
@@ -212,23 +219,21 @@ leaflet(data = df, width = 900, height = 450) %>%
 #  Nashville's Top-Rated Neighborhoods  
 ```{r top_hoods}
 
+
+
 datatable(
-  nash %>% 
-    filter(!is.na(neighborhood)) %>% 
-    group_by(neighborhood) %>% 
-    summarize(count = n(),
-              dist = round(weighted.mean(dist, review_count),2),
-              rating = round(weighted.mean(rating, review_count),2),
-              review_count = sum(review_count)) %>%   
-    top_n(5,rating*review_count) %>% 
-    arrange(-rating*review_count) %>%
-    mutate(Rank = row_number()) %>% 
-    select(Rank, neighborhood ,rating, review_count,dist),
-  colnames = c('Rank','Neighborhood', 'Rating', 'Reviews','Distance'),
-  class = 'row-border stripe compact order-column hover',
-  options=list(pageLength = 20, dom = 't'),
-  rownames=FALSE
+    data = df %>% 
+        select(Rank, neighborhood, rating, review_count, count, distance, uberX, uberXL),
+    colnames = c('Rank','Neighborhood', 'Rating', 'Reviews', 'Restaurants', 'Distance','UberX','UberXL'),
+    class = 'row-border stripe compact order-column hover',
+    options=list(pageLength = 10, dom = 'tip',
+                 columnDefs = list(list(className = 'dt-right', targets = c(6, 7)))),
+    rownames=FALSE
 )
+
+
+
+
 ```
 
 
