@@ -55,7 +55,7 @@ top_hood <- function(categ.best){
         top.hood %>% 
             filter(categ.best==categ.best) %>%
              select(neighborhood,count,rating,review_count, uberX, uberXL, distance, duration),
-        colnames = c('Neighborhood','Restaurants','Rating', 'Reviews', 'UberX', 'UberXL', 'Distance', 'Duration'),
+        colnames = c('Neighborhood','Restaurants','Rating', 'Reviews', 'UberX', 'UberXL', 'Distance', 'Minutes'),
         class = 'row-border stripe compact order-column hover',
         options=list(pageLength = 5, dom = 't',
                      columnDefs = list(list(className = 'dt-right', targets = c(4, 5)))),
@@ -148,6 +148,14 @@ kable(t(summary(nash$rating)))
 
 ```
 
+
+# Uber Pricing Data 
+To help you get around Nashville's hot spots, we used Uber's API to download and its pricing data. Our analysis includes cost estimates for traveling from the conference center to each point of interest. The estimates include the route distance (in miles) and approximate ride duration (in minutes).
+
+```{r uber_route,  fig.width=0.60*1125/72, fig.height=0.60*486/72}
+img <- readPNG('../img/uber_route.png')
+grid.raster(img)
+```
 
 
 # Yelp Ratings by Neighborhood  
