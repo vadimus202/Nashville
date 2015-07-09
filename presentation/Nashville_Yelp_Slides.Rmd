@@ -167,6 +167,16 @@ kable(t(summary(nash$rating)),format = 'html', align='c')
 ```
 
 
+## Uber Pricing Data {.smaller_font}
+To help you get around Nashville's hot spots, we used Uber's API to download and its pricing data. Our analysis includes cost estimates for traveling from the conference center to each point of interest. The estimates include the route distance (in miles) and approximate ride duration (in minutes).
+
+```{r uber_route,  fig.width=0.50*1125/72, fig.height=0.50*486/72}
+img <- readPNG('../img/uber_route.png')
+grid.raster(img)
+```
+
+
+
 ## Yelp Ratings Maps  
 
 The map on the next slide allows to zoom-in on individual Neighborhoods to find out where the best-rated restaurants are concentrated.  
