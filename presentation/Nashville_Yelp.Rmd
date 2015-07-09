@@ -11,6 +11,7 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
+library(RColorBrewer)
 library(leaflet)
 library(ggplot2)
 library(ggthemes)
@@ -30,6 +31,7 @@ load('../data/clean/nash_uber.RData')
 load('../data/clean/nash_hot_chicken.RData')
 load('../data/clean/nash_music.RData')
 
+
 # Normalize ratings
 nash <- mutate(nash,
                yelp_qrt = cut(rating, 
@@ -39,11 +41,11 @@ nash <- mutate(nash,
 
 # list of categories
 categ <-  data.frame(
-  cat = unlist(lapply(nash$categories, strsplit, split = ':')),
-  cat_cd = unlist(lapply(nash$categories_cd, strsplit, split = ':')),
-  stringsAsFactors = F) %>% 
-  unique() %>% 
-  arrange(rank(cat_cd))
+    cat = unlist(lapply(nash$categories, strsplit, split = ':')),
+    cat_cd = unlist(lapply(nash$categories_cd, strsplit, split = ':')),
+    stringsAsFactors = F) %>% 
+    unique() %>% 
+    arrange(rank(cat_cd))
 
 # center coord for leaflet maps
 nash.view = list(lat =36.15970,
@@ -51,80 +53,80 @@ nash.view = list(lat =36.15970,
                  zoom = 12)
 # Conference location and Icon
 agaIcon <- icons(
-  iconUrl = "../img/aga.png",
-  iconWidth = 422/5.626667, iconHeight = 233/5.626667)
+    iconUrl = "../img/aga.png",
+    iconWidth = 422/5.626667, iconHeight = 233/5.626667)
 
 # functions for best in category
 top_hood <- function(categ.best){
-  datatable(
-    nash %>% 
-      filter(grepl(categ.best, categories_cd)
-             & !is.na(neighborhood)) %>%
-      group_by(neighborhood) %>% 
-      summarize(count = n(),
-                dist = round(weighted.mean(dist, review_count),2),
-                rating = round(weighted.mean(rating, review_count),2),
-                review_count = sum(review_count)) %>% 
-      arrange(-rating*review_count) %>% 
-      filter(row_number()<=5),
-    colnames = c('Neighborhood','Restaurants', 'Distance','Rating', 'Reviews'),
-    class = 'row-border stripe compact order-column hover',
-    options=list(pageLength = 5, dom = 't'),
-    rownames=FALSE)
+    datatable(
+        nash %>% 
+            filter(grepl(categ.best, categories_cd)
+                   & !is.na(neighborhood)) %>%
+            group_by(neighborhood) %>% 
+            summarize(count = n(),
+                      dist = round(weighted.mean(dist, review_count),2),
+                      rating = round(weighted.mean(rating, review_count),2),
+                      review_count = sum(review_count)) %>% 
+            arrange(-rating*review_count) %>% 
+            filter(row_number()<=5),
+        colnames = c('Neighborhood','Restaurants', 'Distance','Rating', 'Reviews'),
+        class = 'row-border stripe compact order-column hover',
+        options=list(pageLength = 5, dom = 't'),
+        rownames=FALSE)
 }
 
 top_restr <- function(categ.best){
-  datatable(
-    nash %>% 
-      filter(grepl(categ.best,categories_cd)) %>% 
-      top_n(20,rating*review_count) %>% 
-      arrange(-rating*review_count) %>%
-      mutate(Rank = row_number()) %>% 
-      select(Rank, name, neighborhood, categories ,rating, review_count,dist),
-    colnames = c('Rank','Name','Neighborhood', 'Category', 'Rating', 'Reviews','Distance'),
-    class = 'row-border stripe compact order-column hover',
-    options=list(pageLength = 10, dom = 'tip'),
-    rownames=FALSE)
+    datatable(
+        nash %>% 
+            filter(grepl(categ.best,categories_cd)) %>% 
+            top_n(20,rating*review_count) %>% 
+            arrange(-rating*review_count) %>%
+            mutate(Rank = row_number()) %>% 
+            select(Rank, name, neighborhood, categories ,rating, review_count,dist),
+        colnames = c('Rank','Name','Neighborhood', 'Category', 'Rating', 'Reviews','Distance'),
+        class = 'row-border stripe compact order-column hover',
+        options=list(pageLength = 10, dom = 'tip'),
+        rownames=FALSE)
 }
 
 top_map <- function(categ.best, size_adj=1){
-  
-  df <- nash %>% 
-    filter(grepl(categ.best, categories_cd)) %>%
-    top_n(20,rating*review_count) %>% 
-    arrange(-rating*review_count) %>%
-    mutate(Rank = row_number(),
-           popup = paste0(
-             name, 
-             '<BR>Rank: ', Rank, 
-             '<BR>Neighborhood: ', neighborhood, 
-             '<BR>Categories: ', categories, 
-             '<BR>Rating: ', rating, 
-             '<BR>Reviews: ', review_count, 
-             '<BR>Distance: ', dist
-           )) %>% 
-    select(popup, lat, lng, review_count, Rank)
-  
-  # Create  color palette
-  pal <- colorNumeric(
-    palette = c('forestgreen', 'yellow', 'tomato'),
-    domain = df$Rank
-  )
-  
-  leaflet(data = df, 
-          width = 900, height = 450) %>% 
-    addProviderTiles("CartoDB.Positron") %>%
-    setView(lng = nash.view$lng, lat = nash.view$lat, zoom = nash.view$zoom) %>% 
-    # addMarkers(popup = ~popup, lng = ~lng, lat = ~lat) %>% 
-    addCircleMarkers(
-      popup = ~popup,
-      lng = ~lng, lat = ~lat,
-      radius = ~sqrt(review_count)*size_adj,
-      color = ~pal(Rank),
-      stroke = FALSE, fillOpacity = 0.80) %>%     
-    addMarkers(lng = -86.69255, lat = 36.21149, 
-               icon = agaIcon,
-               popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
+    
+    df <- nash %>% 
+        filter(grepl(categ.best, categories_cd)) %>%
+        top_n(20,rating*review_count) %>% 
+        arrange(-rating*review_count) %>%
+        mutate(Rank = row_number(),
+               popup = paste0(
+                   name, 
+                   '<BR>Rank: ', Rank, 
+                   '<BR>Neighborhood: ', neighborhood, 
+                   '<BR>Categories: ', categories, 
+                   '<BR>Rating: ', rating, 
+                   '<BR>Reviews: ', review_count, 
+                   '<BR>Distance: ', dist
+               )) %>% 
+        select(popup, lat, lng, review_count, Rank)
+    
+    # Create  color palette
+    pal <- colorNumeric(
+        palette = c('forestgreen', 'yellow', 'tomato'),
+        domain = df$Rank
+    )
+    
+    leaflet(data = df, 
+            width = 900, height = 450) %>% 
+        addProviderTiles("CartoDB.Positron") %>%
+        setView(lng = nash.view$lng, lat = nash.view$lat, zoom = nash.view$zoom) %>% 
+        # addMarkers(popup = ~popup, lng = ~lng, lat = ~lat) %>% 
+        addCircleMarkers(
+            popup = ~popup,
+            lng = ~lng, lat = ~lat,
+            radius = ~sqrt(review_count)*size_adj,
+            color = ~pal(Rank),
+            stroke = FALSE, fillOpacity = 0.80) %>%     
+        addMarkers(lng = -86.69255, lat = 36.21149, 
+                   icon = agaIcon,
+                   popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
 }
 
 
@@ -152,10 +154,10 @@ Yelp users assign a rating based on a scale of 1 (worst) to 5 (best) Stars. The 
 
 ```{r yelp_dist, fig.width=6, fig.height=3.5}
 ggplot(nash, aes(x=rating)) + 
-  ggtitle('Number of restaurants by Yelp Rating') +
-  geom_histogram(binwidth = 0.50, fill='firebrick', color='white') +
-  scale_x_continuous(limits=c(1, 5)) +
-  scale_y_continuous(labels = comma)
+    ggtitle('Number of restaurants by Yelp Rating') +
+    geom_histogram(binwidth = 0.50, fill='firebrick', color='white') +
+    scale_x_continuous(limits=c(1, 5)) +
+    scale_y_continuous(labels = comma)
 
 kable(t(summary(nash$rating)))
 
@@ -180,19 +182,19 @@ df <- nash.hood %>%
         by = c('neighborhood'='id')
     ) %>% 
     mutate(popup = paste0(
-                   neighborhood,
-                   '<BR>Rank: ', Rank, ' of ', n(),
-                   '<BR>Restaurants: ', count,
-                   '<BR>Avg Rating: ', rating,
-                   '<BR>Reviews: ', comma(review_count),
-                   '<BR>Distance: ', distance,
-                   '<BR>UberX: ', uberX))
+        neighborhood,
+        '<BR>Rank: ', Rank, ' of ', n(),
+        '<BR>Restaurants: ', count,
+        '<BR>Avg Rating: ', rating,
+        '<BR>Reviews: ', comma(review_count),
+        '<BR>Distance: ', distance,
+        '<BR>UberX: ', uberX))
 
 # Create  ratings quantile-based discrete palette function
 pal <- colorQuantile(
-  palette = c('tomato', 'yellow', 'forestgreen'),
-  domain = df$WR,
-  n=5
+    palette = c('tomato', 'yellow', 'forestgreen'),
+    domain = df$WR,
+    n=5
 )
 
 leaflet(
@@ -253,64 +255,69 @@ There are many restaurants in Nashville that serve a variant of the dish, and th
 
 Don't leave Nashville without sampling this unique dish from one of the restaurants highlighted below.
 
-```{r chic_img, fig.width=0.50*500/72, fig.height=0.50*323/72}
+```{r chic_img, fig.width=0.80*500/72, fig.height=0.80*323/72}
 img <- readJPEG('../img/nashville_hot_chicken.jpg')
 grid.raster(img)
 ```
 
+
+
 ## Top 20 Restarants Serving Nashville Hot Chicken  
 
 We calculated restaurants rankings based on a combination of Yelp ratings,  number of reviews and frequency of 'hot chicken' mentions in user reviews.
-```{r}
+```{r top_chic}
 
 datatable(
-    hot.chic %>% 
-      top_n(20,-rank) %>% 
-      arrange(rank) %>%
-      select(rank, name ,rating, review_count,dist, snippet_text),
-    colnames = c('Rank','Name', 'Rating', 'Reviews','Distance','Reviews Snippet'),
+    data = hot.chic %>% 
+        top_n(20,-Rank) %>% 
+        arrange(Rank) %>%
+        select(Rank, name ,rating, review_count, uberX, duration, snippet_text),
+    colnames = c('Rank','Name', 'Rating', 'Reviews','UberX','Minutes','Reviews Snippet'),
     class = 'row-border stripe compact order-column hover',
-    options=list(pageLength = 5, dom = 'tip'),
+    options=list(pageLength = 10, dom = 'tip',
+                 columnDefs = list(list(className = 'dt-right', targets = c(4)))),
     rownames=FALSE)
 
 
 ```
 
-## Best of Hot Chicken on the Map
+## Best of Hot Chicken on the Map - Red Hot!
 
-- The __color__ of the circles represents the rank of the restaurants from 1 (Green) to 20 (Red).  
-- The __size__ of the circles indicates the frequency of 'hot chicken' mentions in Yelp reviews.  
+- The **color** of the circles represents the rank of the restaurants from 1 (Dark Red) to 20 (Pink).  
+- The **size** of the circles indicates the frequency of 'hot chicken' mentions in Yelp reviews.  
 
 ```{r hot_chic_map}
 
 df = hot.chic %>%
-            top_n(20, -rank) %>% 
-            mutate(popup = paste0(
-                     name, 
-                     '<BR>Rank: ', rank, 
-                     '<BR>Categories: ', categories, 
-                     '<BR>Rating: ', rating, 
-                     '<BR>Reviews: ', comma(review_count))) %>% 
-            select(popup, lat, lng, rating, matches, rank)
+    top_n(20,-Rank) %>% 
+    mutate(popup = paste0(
+        name, 
+        '<BR>Rank: ', Rank, 
+        '<BR>Neighborhood: ', neighborhood,
+        '<BR>Categories: ', categories, 
+        '<BR>Rating: ', rating, 
+        '<BR>Reviews: ', comma(review_count),
+        '<BR>UberX: ', uberX,
+        '<BR>Distance: ', distance,
+        '<BR>Minutes: ', duration))
 
 # Create  color palette
 pal <- colorNumeric(
-  palette = c('forestgreen', 'yellow', 'tomato'),
-  domain = df$rank
-)
+    palette = brewer.pal(n = 8, name = 'Reds')[8:3],
+    domain = df$Rank)
 
 leaflet(data = df, width = 900, height = 450) %>% 
-  addProviderTiles("CartoDB.Positron") %>%
-  setView(lng = nash.view$lng, lat = nash.view$lat+0.01, zoom = nash.view$zoom) %>% 
-  addCircleMarkers(
-    popup = ~popup,
-    lng = ~lng, lat = ~lat,
-    radius = ~sqrt(matches)*2.5,
-    color = ~pal(rank),
-    stroke = FALSE, fillOpacity = 0.90) %>% 
-  addMarkers(lng = -86.69255, lat = 36.21149, 
-             icon = agaIcon,
-             popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
+    addProviderTiles("CartoDB.Positron") %>%
+    setView(lng = nash.view$lng, lat = nash.view$lat+0.01, zoom = nash.view$zoom) %>% 
+    addCircleMarkers(
+        popup = ~popup,
+        lng = ~lng, lat = ~lat,
+        radius = ~sqrt(matches)*2.5,
+        color = ~pal(Rank),
+        stroke = FALSE, fillOpacity = 0.90) %>% 
+    addMarkers(lng = -86.69255, lat = 36.21149, 
+               icon = agaIcon,
+               popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
 
 
 
@@ -330,16 +337,16 @@ grid.raster(img)
 ## Top Neighborhoods  
 ```{r top_music_hoods}
 
-  datatable(
+datatable(
     nash.music %>% 
-      filter(!is.na(neighborhood)) %>%
-      group_by(neighborhood) %>% 
-      summarize(count = n(),
-                dist = round(weighted.mean(dist, review_count),2),
-                rating = round(weighted.mean(rating, review_count),2),
-                review_count = sum(review_count)) %>% 
-      arrange(-rating*review_count) %>% 
-      filter(row_number()<=5),
+        filter(!is.na(neighborhood)) %>%
+        group_by(neighborhood) %>% 
+        summarize(count = n(),
+                  dist = round(weighted.mean(dist, review_count),2),
+                  rating = round(weighted.mean(rating, review_count),2),
+                  review_count = sum(review_count)) %>% 
+        arrange(-rating*review_count) %>% 
+        filter(row_number()<=5),
     colnames = c('Neighborhood','Venues', 'Distance','Rating', 'Reviews'),
     class = 'row-border stripe compact order-column hover',
     options=list(pageLength = 5, dom = 't'),
@@ -352,18 +359,18 @@ grid.raster(img)
 ```{r top_music_venues}
 
 datatable(
-  nash.music %>% 
-    filter(!grepl('cinema',categories_cd)) %>% 
-    top_n(20,rating*review_count) %>% 
-    arrange(-rating*review_count) %>%
-    mutate(categories = gsub('Music Venues:','', categories),
-           categories = gsub(':',', ', categories),
-           Rank = row_number()) %>% 
-    select(Rank, name, categories ,rating, review_count,dist,snippet_text),
-  colnames = c('Rank','Name', 'Category', 'Rating', 'Reviews','Distance','Review Snippet'),
-  class = 'row-border stripe compact order-column hover',
-  options=list(pageLength = 5, dom = 'tip'),
-  rownames=FALSE)
+    nash.music %>% 
+        filter(!grepl('cinema',categories_cd)) %>% 
+        top_n(20,rating*review_count) %>% 
+        arrange(-rating*review_count) %>%
+        mutate(categories = gsub('Music Venues:','', categories),
+               categories = gsub(':',', ', categories),
+               Rank = row_number()) %>% 
+        select(Rank, name, categories ,rating, review_count,dist,snippet_text),
+    colnames = c('Rank','Name', 'Category', 'Rating', 'Reviews','Distance','Review Snippet'),
+    class = 'row-border stripe compact order-column hover',
+    options=list(pageLength = 5, dom = 'tip'),
+    rownames=FALSE)
 
 
 
@@ -378,38 +385,38 @@ datatable(
 ```{r music_map}
 
 df = nash.music %>%
-  filter(!grepl('cinema',categories_cd)) %>% 
-  top_n(20, -rank) %>% 
-  mutate(rank = row_number(),
-         categories = gsub('Music Venues:','', categories),
+    filter(!grepl('cinema',categories_cd)) %>% 
+    top_n(20, -rank) %>% 
+    mutate(rank = row_number(),
+           categories = gsub('Music Venues:','', categories),
            categories = gsub(':',', ', categories),
-         popup = paste0(
-           name, 
-           '<BR>Rank: ', rank, 
-           '<BR>Categories: ', categories, 
-           '<BR>Neighborhood: ', neighborhood, 
-           '<BR>Rating: ', rating, 
-           '<BR>Reviews: ', comma(review_count))) %>% 
-  select(popup, lat, lng, rating, review_count, rank)
+           popup = paste0(
+               name, 
+               '<BR>Rank: ', rank, 
+               '<BR>Categories: ', categories, 
+               '<BR>Neighborhood: ', neighborhood, 
+               '<BR>Rating: ', rating, 
+               '<BR>Reviews: ', comma(review_count))) %>% 
+    select(popup, lat, lng, rating, review_count, rank)
 
 # Create  color palette
 pal <- colorNumeric(
-  palette = c('forestgreen', 'yellow', 'tomato'),
-  domain = df$rank
+    palette = c('forestgreen', 'yellow', 'tomato'),
+    domain = df$rank
 )
 
 leaflet(data = df, width = 900, height = 450) %>% 
-  addProviderTiles("CartoDB.Positron") %>%
-  setView(lng = nash.view$lng, lat = nash.view$lat+0.01, zoom = nash.view$zoom) %>% 
-  addCircleMarkers(
-    popup = ~popup,
-    lng = ~lng, lat = ~lat,
-    radius = ~sqrt(review_count)*0.75,
-    color = ~pal(rank),
-    stroke = FALSE, fillOpacity = 0.90) %>% 
-  addMarkers(lng = -86.69255, lat = 36.21149, 
-             icon = agaIcon,
-             popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
+    addProviderTiles("CartoDB.Positron") %>%
+    setView(lng = nash.view$lng, lat = nash.view$lat+0.01, zoom = nash.view$zoom) %>% 
+    addCircleMarkers(
+        popup = ~popup,
+        lng = ~lng, lat = ~lat,
+        radius = ~sqrt(review_count)*0.75,
+        color = ~pal(rank),
+        stroke = FALSE, fillOpacity = 0.90) %>% 
+    addMarkers(lng = -86.69255, lat = 36.21149, 
+               icon = agaIcon,
+               popup = 'AGA Conference<BR>Gaylord Opryland Hotel & Convention Center')
 
 
 
@@ -426,16 +433,16 @@ leaflet(data = df, width = 900, height = 450) %>%
 
 ## Top Neighborhoods  
 ```{r}
-  top_hood('southern')
+top_hood('southern')
 ```
 
 ## Top 20 Southern Restaurants  
 ```{r}
-  top_restr('southern')
+top_restr('southern')
 ```
 
 ```{r}
-  top_map('southern', size_adj = 0.5)
+top_map('southern', size_adj = 0.5)
 ```
 
 
@@ -448,16 +455,16 @@ grid.raster(img)
 
 ## Top Neighborhoods  
 ```{r}
-  top_hood('bbq')
+top_hood('bbq')
 ```
 
 ## Top 20 Barbeque Restaurants  
 ```{r}
-  top_restr('bbq')
+top_restr('bbq')
 ```
 
 ```{r}
-  top_map('bbq', size_adj = .65)
+top_map('bbq', size_adj = .65)
 ```
 
 
@@ -466,16 +473,16 @@ grid.raster(img)
 
 ## Top Neighborhoods  
 ```{r}
-  top_hood('steak')
+top_hood('steak')
 ```
 
 ## Top 20 Steakhouses  
 ```{r}
-  top_restr('steak')
+top_restr('steak')
 ```
 
 ```{r}
-  top_map('steak',size_adj = 0.80)
+top_map('steak',size_adj = 0.80)
 ```
 
 
@@ -484,16 +491,16 @@ grid.raster(img)
 
 ## Top Neighborhoods  
 ```{r}
-  top_hood('breweries|beer')
+top_hood('breweries|beer')
 ```
 
 ## Top Breweries  
 ```{r}
-  top_restr('breweries|beer')
+top_restr('breweries|beer')
 ```
 
 ```{r}
-  top_map('breweries|beer', size_adj = 1.25)
+top_map('breweries|beer', size_adj = 1.25)
 ```
 
 
