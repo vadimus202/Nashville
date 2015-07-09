@@ -38,6 +38,8 @@ get_uber_estimates <- function(df, uber_token){
             is.null(df$lon2)
         )==0)
     
+    # unique id?
+    stopifnot(sum(duplicated(df$id))==0)
     
     library(httr)
     library(jsonlite)
