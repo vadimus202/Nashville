@@ -1,71 +1,29 @@
-library(httr)
-library(jsonlite)
 library(dplyr)
 
+# place uber token in global env
 source("../setup_uber_oauth.R")
 stopifnot(exists('uber_token'))
 
+# source Uber functions
+source("code/function_Uber_API.R")
+
+
 aga.addr = '2800 Opryland Drive, Nashville, TN 37214'
 aga.loc <- ggmap::geocode(location = aga.addr)
-aga.loc <- rev(aga.loc)
+stopifnot(length(aga.loc)==2)
 
-
-
-
-fares <- GET("https://api.uber.com/v1/products",
-             query=list(
-                 server_token = uber_token,
-                 latitude = aga.loc$lat,
-                 longitude = aga.loc$lon))
-
-fares <- content(fares)
-fares <- fromJSON(toJSON(fares))
-fares
-
+uber.prod <- get_uber_products(lat = aga.loc$lat, lon = aga.loc$lon, uber_token = uber_token)
 
 
 load("data/clean/nash_restaurants.RData")
 
 
-z <- GET("https://api.uber.com/v1/estimates/price",
-         query=list(
-             server_token = uber_token,
-             start_latitude = aga.loc$lat,
-             start_longitude = aga.loc$lon,
-             end_latitude = nash.hood$lat[1],
-             end_longitude = nash.hood$long[1]
-         ))
-z <- content(z)
-z <- fromJSON(toJSON(z))$prices
-z
+df <- nash.hood %>% 
+    filter(!is.na(neighborhood)) %>% 
+    mutate(lat1 = as.numeric(aga.loc$lat),
+           lon1 = as.numeric(aga.loc$lon)) %>% 
+    select(id = neighborhood, lat1, lon1, lat2=lat, lon2=long)
 
+nash.hood.uber <- get_uber_estimates(df = df, uber_token = uber_token)
 
-
-uber.raw <- apply(
-    X = filter(nash.hood, !is.na(neighborhood)), 
-    MARGIN = 1, 
-    FUN = function(x){
-        z <- GET("https://api.uber.com/v1/estimates/price",
-                 query=list(
-                     server_token = uber_token,
-                     start_latitude = aga.loc$lat,
-                     start_longitude = aga.loc$lon,
-                     end_latitude = x['lat'],
-                     end_longitude = x['long']
-                 ))
-        z <- content(z)
-        z <- fromJSON(toJSON(z))$prices
-        df <- data.frame(
-            hood = x['neighborhood'],
-            product = unlist(z$localized_display_name),
-            duration = as.integer(unlist(z$duration)/60),
-            distance = unlist(z$distance),
-            estimate = unlist(z$estimate),
-            stringsAsFactors = F, row.names = NULL)
-        df
-    })
-
-uber <- do.call("rbind", uber.raw)
-
-save(fares, uber,
-     file = 'data/clean/nash_uber.RData')
+save(uber.prod, nash.hood.uber, file = 'data/clean/nash_uber.RData')
