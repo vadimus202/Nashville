@@ -27,17 +27,10 @@ theme_set(theme_fivethirtyeight())
 
 # load data
 load('../data/clean/nash_restaurants.RData')
-load('../data/clean/nash_uber.RData')
 load('../data/clean/nash_hot_chicken.RData')
 load('../data/clean/nash_music.RData')
+load('../data/clean/nash_top_categ.RData')
 
-
-# Normalize ratings
-nash <- mutate(nash,
-               yelp_qrt = cut(rating, 
-                              breaks = quantile(rating, seq(0,1,length.out = 5)), 
-                              include.lowest = T,
-                              labels = 1:4))
 
 # list of categories
 categ <-  data.frame(
@@ -59,52 +52,44 @@ agaIcon <- icons(
 # functions for best in category
 top_hood <- function(categ.best){
     datatable(
-        nash %>% 
-            filter(grepl(categ.best, categories_cd)
-                   & !is.na(neighborhood)) %>%
-            group_by(neighborhood) %>% 
-            summarize(count = n(),
-                      dist = round(weighted.mean(dist, review_count),2),
-                      rating = round(weighted.mean(rating, review_count),2),
-                      review_count = sum(review_count)) %>% 
-            arrange(-rating*review_count) %>% 
-            filter(row_number()<=5),
-        colnames = c('Neighborhood','Restaurants', 'Distance','Rating', 'Reviews'),
+        top.hood %>% 
+            filter(categ.best==categ.best) %>%
+             select(neighborhood,count,rating,review_count, uberX, uberXL, distance, duration),
+        colnames = c('Neighborhood','Restaurants','Rating', 'Reviews', 'UberX', 'UberXL', 'Distance', 'Duration'),
         class = 'row-border stripe compact order-column hover',
-        options=list(pageLength = 5, dom = 't'),
+        options=list(pageLength = 5, dom = 't',
+                     columnDefs = list(list(className = 'dt-right', targets = c(4, 5)))),
         rownames=FALSE)
 }
 
-top_restr <- function(categ.best){
+top_restr <- function(categ){
     datatable(
-        nash %>% 
-            filter(grepl(categ.best,categories_cd)) %>% 
-            top_n(20,rating*review_count) %>% 
-            arrange(-rating*review_count) %>%
-            mutate(Rank = row_number()) %>% 
-            select(Rank, name, neighborhood, categories ,rating, review_count,dist),
-        colnames = c('Rank','Name','Neighborhood', 'Category', 'Rating', 'Reviews','Distance'),
+        top %>% 
+            filter(categ.best==categ) %>% 
+            arrange(Rank) %>%
+            select(Rank, name, neighborhood, categories ,rating, review_count, uberX , distance, duration),
+        colnames = c('Rank','Name','Neighborhood', 'Category', 'Rating', 'Reviews','UberX', 'Distance', 'Minutes'),
         class = 'row-border stripe compact order-column hover',
-        options=list(pageLength = 10, dom = 'tip'),
+        options=list(pageLength = 10, dom = 'tip',
+                     columnDefs = list(list(className = 'dt-right', targets = c(6)))),
         rownames=FALSE)
 }
 
-top_map <- function(categ.best, size_adj=1){
+top_map <- function(categ, size_adj=1){
     
-    df <- nash %>% 
-        filter(grepl(categ.best, categories_cd)) %>%
-        top_n(20,rating*review_count) %>% 
-        arrange(-rating*review_count) %>%
-        mutate(Rank = row_number(),
-               popup = paste0(
-                   name, 
-                   '<BR>Rank: ', Rank, 
-                   '<BR>Neighborhood: ', neighborhood, 
-                   '<BR>Categories: ', categories, 
-                   '<BR>Rating: ', rating, 
-                   '<BR>Reviews: ', review_count, 
-                   '<BR>Distance: ', dist
-               )) %>% 
+    df <- top %>% 
+        filter(categ.best == categ) %>%
+        mutate(popup = paste0(
+            name, 
+            '<BR>Rank: ', Rank, 
+            '<BR>Neighborhood: ', neighborhood, 
+            '<BR>Categories: ', categories, 
+            '<BR>Rating: ', rating, 
+            '<BR>Reviews: ', review_count,
+            '<BR>UberX: ', uberX,
+            '<BR>Distance: ', distance,
+            '<BR>Minutes: ', duration
+        )) %>% 
         select(popup, lat, lng, review_count, Rank)
     
     # Create  color palette
@@ -176,11 +161,6 @@ The map below allows to zoom-in on individual Neighborhoods to find out where th
 
 
 df <- nash.hood %>% 
-    left_join(
-        nash.hood.uber %>% 
-            select(id, distance, duration, uberX, uberXL),
-        by = c('neighborhood'='id')
-    ) %>% 
     mutate(popup = paste0(
         neighborhood,
         '<BR>Rank: ', Rank, ' of ', n(),
@@ -226,6 +206,7 @@ leaflet(
 
 datatable(
     data = df %>% 
+        mutate(rating = round(rating,2)) %>% 
         select(Rank, neighborhood, rating, review_count, count, uberX, uberXL, distance, duration),
     colnames = c('Rank','Neighborhood', 'Rating', 'Reviews', 'Restaurants','UberX','UberXL', 'Distance', 'Minutes'),
     class = 'row-border stripe compact order-column hover',
@@ -449,7 +430,7 @@ top_map('southern', size_adj = 0.5)
 ```
 
 
-# Where to Find the Best Bar-B-Que
+# Where to Find the Best Barbeque
 
 ```{r bbq_img, fig.width=0.75*460/72, fig.height=0.75*276/72}
 img <- readJPEG('../img/nashville_bbq.jpg')
@@ -467,7 +448,7 @@ top_restr('bbq')
 ```
 
 ```{r}
-top_map('bbq', size_adj = .65)
+top_map('bbq', size_adj = .80)
 ```
 
 
