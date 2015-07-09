@@ -5,19 +5,27 @@ require(dplyr)
 # yelp search term
 category_filter = 'restaurants'
 
-# distance to AGA
-addr = '2800 Opryland Drive, Nashville, TN 37214'
-geo.loc <- ggmap::geocode(location = addr)
-geo.loc <- c(geo.loc$lat, geo.loc$lon)
-
-
 
 
 load('data/clean/geography.RData')
 
+# source functions
+source("code/function_Uber_API.R")
+source('code/function_Bayes_Avg.R')
+
+# place uber token in global env
+source("../setup_uber_oauth.R")
+stopifnot(exists('uber_token'))
 
 
-#get API signature key
+# distance to AGA
+aga.addr = '2800 Opryland Drive, Nashville, TN 37214'
+aga.loc <- ggmap::geocode(location = aga.addr)
+stopifnot(length(aga.loc)==2)
+
+
+
+#get Yelp API signature key
 source('../setup_yelp_oauth.R')
 stopifnot(!is.null(yelp.sig))
 
@@ -34,14 +42,6 @@ nash.yelp$elapse
 nash.yelp$err
 
 
-# Bayesian estimate
-# weighted rating (WR) = (v ÷ (v+m)) × R + (m ÷ (v+m)) × C
-# R = average for the movie (mean) = (Rating)
-# v = number of votes for the item = (votes)
-# m = minimum votes required to be listed in the Top List
-# C = the mean vote across the whole report
-
-
 
 # Prep Final Output datasets
 
@@ -51,9 +51,7 @@ nash <- nash.yelp$results %>%
     filter(!grepl('foodtrucks|foodstands|streetvendors|hotdogs|cloth|laundry|accessories|antiques|
                       aquariums|arcades|artsandcrafts|bookstores|
                 homedecor|movietheaters',categories_cd)) %>% 
-    rename(zip = postal_code) %>% 
-    mutate(dist =  distCosine(geo.loc, cbind(lat, lng), r = 6378137*0.000621371192),
-           dist = round(dist,2))
+    rename(zip = postal_code)
 
 # aggregate by Zip code
 nash.zip <- nash %>%
@@ -65,17 +63,12 @@ nash.zip <- nash %>%
     inner_join(zips, by ='zip') %>%
     mutate(count_per_person = as.integer(count/pop*100000),
            review_per_person = as.integer(review_count/pop*100000),
-           count_per_sqmi = round(count/area*100,3),
-           dist =  distCosine(geo.loc, cbind(lat, long), 
-                              r = 6378137*0.000621371192),
-           dist = round(dist,2)) %>%
+           count_per_sqmi = round(count/area*100,3)) %>%
     select(zip, city, count, count_per_person, 
            count_per_sqmi, rating, review_count, review_per_person,
-           pop, inc, lat, long, area, dens, dist) %>%
+           pop, inc, lat, long, area, dens) %>%
     arrange(-count)
 
-# aggregate by neighborhood
-min_votes <- 500
 
 nash.hood <- nash %>%
     filter(!is.na(neighborhood)) %>% 
@@ -84,24 +77,28 @@ nash.hood <- nash %>%
         count = n(),
         rating = weighted.mean(rating, review_count),
         review_count = sum(review_count)) %>%
-    ungroup() %>% 
-    mutate(R = rating,
-           v = review_count,
-           m = min_votes,
-           C = mean(rating),
-           WR = (v / (v+m)) * R + (m / (v+m)) * C) %>% 
-    filter(v>=m & !is.na(neighborhood)) %>%   
-    arrange(-WR) %>%
-    mutate(Rank = row_number(),
-           rating = round(rating, 2),
-           WR = round(WR, 2)) %>% 
-    select(-R,-v,-m, -C)
+    ungroup() 
 
+# add ranks
+nash.hood <- get_bayes_avg(nash.hood, min_votes = 500)
+
+# get hood coord from Google API
 hood.loc <- ggmap::geocode(
     location = paste(nash.hood$neighborhood, 
                      "Nashville, TN", sep = ', '))
-
 nash.hood <- cbind(nash.hood, hood.loc)
+
+# add Uber info
+df.uber <- nash.hood %>% 
+    mutate(lat1 = as.numeric(aga.loc$lat),
+           lon1 = as.numeric(aga.loc$lon)) %>% 
+    select(id=neighborhood, lat1, lon1, lat2=lat, lon2=lon)
+
+df.uber <- get_uber_estimates(df = df.uber, uber_token = uber_token)
+
+nash.hood <- left_join(nash.hood, df.uber, by=c('neighborhood'='id'))
+
+
 
 # save
 save(nash.yelp, 
