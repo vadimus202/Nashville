@@ -178,7 +178,7 @@ The map below allows to zoom-in on individual Neighborhoods to find out where th
 df <- nash.hood %>% 
     left_join(
         nash.hood.uber %>% 
-            select(id, distance, uberX, uberXL),
+            select(id, distance, duration, uberX, uberXL),
         by = c('neighborhood'='id')
     ) %>% 
     mutate(popup = paste0(
@@ -187,8 +187,9 @@ df <- nash.hood %>%
         '<BR>Restaurants: ', count,
         '<BR>Avg Rating: ', rating,
         '<BR>Reviews: ', comma(review_count),
+        '<BR>UberX: ', uberX,
         '<BR>Distance: ', distance,
-        '<BR>UberX: ', uberX))
+        '<BR>Minutes: ', duration))
 
 # Create  ratings quantile-based discrete palette function
 pal <- colorQuantile(
@@ -225,11 +226,11 @@ leaflet(
 
 datatable(
     data = df %>% 
-        select(Rank, neighborhood, rating, review_count, count, distance, uberX, uberXL),
-    colnames = c('Rank','Neighborhood', 'Rating', 'Reviews', 'Restaurants', 'Distance','UberX','UberXL'),
+        select(Rank, neighborhood, rating, review_count, count, uberX, uberXL, distance, duration),
+    colnames = c('Rank','Neighborhood', 'Rating', 'Reviews', 'Restaurants','UberX','UberXL', 'Distance', 'Minutes'),
     class = 'row-border stripe compact order-column hover',
     options=list(pageLength = 10, dom = 'tip',
-                 columnDefs = list(list(className = 'dt-right', targets = c(6, 7)))),
+                 columnDefs = list(list(className = 'dt-right', targets = c(5, 6)))),
     rownames=FALSE
 )
 
