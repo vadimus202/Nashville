@@ -50,6 +50,26 @@ top.hood <- top %>%
     top_n(5, WR) %>% 
     ungroup()
 
+# get hood coord from Google API
+hood.loc <- ggmap::geocode(
+    location = paste(top.hood$neighborhood, 
+                     "Nashville, TN", sep = ', '))
+top.hood <- cbind(top.hood, hood.loc)
+
+# add Uber info
+df.uber <- top.hood %>% 
+    mutate(lat1 = as.numeric(aga.loc$lat),
+           lon1 = as.numeric(aga.loc$lon)) %>% 
+    select(id=neighborhood, lat1, lon1, lat2=lat, lon2=lon) %>% 
+    unique()
+
+df.uber <- get_uber_estimates(df = df.uber, uber_token = uber_token)
+top.hood <- left_join(top.hood, df.uber, by=c('neighborhood'='id'))
+
+
+
+
+
 top <- top %>% 
     group_by(categ.best) %>% 
     top_n(20, WR) %>% 
